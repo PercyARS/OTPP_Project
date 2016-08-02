@@ -37,9 +37,9 @@ def sendMail(msg):
         server.ehlo()
         server.starttls()
         server.login(fromaddr, frompwd)
-        #server.sendmail(fromaddr, toaddr, message)
+        server.sendmail(fromaddr, toaddr, message)
         server.close()
-        #print 'Successfully sent the mail'
+        print 'Successfully sent the mail'
     except:
         print "Failed to send mail"
 
@@ -88,7 +88,7 @@ def UTCtoLinux(UTCString):
 
 def processSignal():
     date = raw_input("Signal at which minute, enter UTC time in this format: YYYY-MM-DD-HH:MM or press enter if most "
-                     "recent signal is required")
+                     "recent signal is required\n")
     # if the user entered nothing, print NOW
     if date == "":
         date = "NOW"
@@ -122,7 +122,7 @@ def processSignal():
 
 def processPrice():
     date = raw_input("Price at which minute, enter UTC time in this format: YYYY-MM-DD-HH:MM or press enter if most "
-                     "recent price is required")
+                     "recent price is required\n")
     # if the user entered nothing, print NOW
     if date == "":
         date = "NOW"
@@ -132,7 +132,7 @@ def processPrice():
         try:
             time = UTCtoLinux(date)
         except ValueError, msg:
-            print "Invalid format" %msg
+            print "Invalid format %s" % msg
             return
 
     try:

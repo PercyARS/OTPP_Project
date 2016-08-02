@@ -20,6 +20,7 @@ import SocketServer
 # class object that encapsulates data per minute
 
 SERVER_TIME_OUT = 10
+CSV_LITE = True
 
 
 class Processor(Thread):
@@ -87,6 +88,8 @@ def getPrice(time):
     if time == 0:
         return str(Price.values()[-1])
     else:
+        print Price
+        #print Price[1364753460]
         if time in Price.keys():
             return str(Price[time])
         else:
@@ -128,11 +131,11 @@ def fetchServer2Data_Live():
 
     # updating the internal data structure
     # now time points to the latest time
-    print "Adding Server2 data at:" + linuxToUTC(time) + " Price" + str(price)
+    print "Adding Server2 data at:" + linuxToUTC(time) + " Price " + str(price)
     calculateTradingStrategies(PriceWindow,time)
 
 def linuxToUTC(linuxTime):
-    return datetime.datetime.fromtimestamp(int(linuxTime)).strftime('%Y-%m-%d-%H:%M')
+    return datetime.datetime.utcfromtimestamp(int(linuxTime)).strftime('%Y-%m-%d-%H:%M')
 
 def UTCtoLinux(UTCString):
     return int(time.mktime(datetime.datetime.strptime(UTCString,"%Y-%m-%d-%H:%M").timetuple())-14400)
@@ -170,12 +173,16 @@ def calculateTradingStrategies(PriceWindow, time):
 
 def fetchServer1Data():
     print 'Reading Server1 Data...'
-    #dataFile = urllib.URLopener()
-    #dataFile.retrieve('http://api.bitcoincharts.com/v1/csv/bitfinexUSD.csv.gz', "past.csv.gz")
+    if CSV_LITE:
+        filename = "past1.csv.gz"
+    else:
+        filename = "past.csv.gz"
+        dataFile = urllib.URLopener()
+        dataFile.retrieve('http://api.bitcoincharts.com/v1/csv/bitfinexUSD.csv.gz', filename)
     csv_file = open("Server1Result.csv", "w")
     csv_file.write("datetime, price, signal, pnl\n")
     HourWindow = []
-    with gzip.open('past1.csv.gz','rt') as f:
+    with gzip.open(filename,'rt') as f:
         for line in f:
             PriceWindow = []
             time1 = int(line.split(",")[0])
@@ -204,8 +211,6 @@ def fetchServer1Data():
             calculateTradingStrategies(PriceWindow,time)
     print 'Writing price and trading strategies to file: Server1Result.csv'
     for time in Signal.keys():
-        #print ("Time:"+linuxToUTC(time))
-        #print ("Writing:"+linuxToUTC(time)+","+str(Price[time])+","+str(Signal[time])+","+str(PnL[time])+"\n")
         csv_file.write(linuxToUTC(time)+","+str(Price[time])+","+str(Signal[time])+","+str(PnL[time])+"\n")
     print "Reading finished"
     csv_file.close()
@@ -215,19 +220,20 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
 
     def handle(self):
         print "New connection from: " + self.client_address[0]
-        while True:
+        data = "foo"
+        while data != "":
             data = self.request.recv(4096)
             print ("We got request: "+ data)
             p.add((self.request, data))
 
-
+class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
+    pass
 
 def main(port):
-    host = socket.gethostname()
-    server = SocketServer.TCPServer(("localhost", port), MyTCPHandler)
+    t = ThreadedTCPServer(('localhost',port), MyTCPHandler)
     try:
-        server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        server.serve_forever()
+        t.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        t.serve_forever()
     except KeyboardInterrupt:
         print "Ctrl-c hit, Stop."
     cleanup()
